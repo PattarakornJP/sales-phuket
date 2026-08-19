@@ -322,14 +322,27 @@ $('#chart').addEventListener('pointermove', e => {
 $('#chart').addEventListener('pointerleave', () => { tip.style.opacity = 0; });
 
 /* ---------- pie (donut) ---------- */
-const PIE_LIGHT = ['#2a78d6','#eb6834','#1baf7a','#eda100','#e87ba4','#008300','#e34948'];
-const PIE_DARK  = ['#3987e5','#d95926','#199e70','#c98500','#d55181','#008300','#e66767'];
+/* สีผูกกับชื่อเซลล์ไว้ตายตัว ให้ตรงกับ Dashboard แผนที่ */
+const SALE_COLOR = {
+  'พี่กร':      ['#1c5cab','#256abf'],
+  'น้องเบบี้':   ['#eb6834','#d95926'],
+  'พี่สันต์':    ['#1baf7a','#199e70'],
+  'พี่รินทร์':   ['#eda100','#c98500'],
+  'พี่ภูมิ':     ['#6da7ec','#6da7ec'],
+  'น้องอาร์ม':  ['#008300','#008300'],
+  'น้องเกีย':    ['#e34948','#e66767']
+};
+const PIE_FALLBACK = [['#1c5cab','#256abf'],['#eb6834','#d95926'],['#1baf7a','#199e70'],
+  ['#eda100','#c98500'],['#6da7ec','#6da7ec'],['#008300','#008300'],['#e34948','#e66767']];
 const pieSvg = $('#pie'), pieLeg = $('#pieLeg');
 const VW = 520, CX = 260, CY = 158, R = 116, RIN = 75, GAP_DEG = 1.1;
 const LBL_MIN_PCT = 10;   // label directly only the big slices; legend carries the rest
 const NS = 'http://www.w3.org/2000/svg';
 
-function pieColors(){ return curDark() ? PIE_DARK : PIE_LIGHT; }
+function pieColors(){
+  const k = curDark() ? 1 : 0;
+  return stats.map((s,i) => (SALE_COLOR[s.nick] || PIE_FALLBACK[i % 7])[k]);
+}
 function pol(cx, cy, r, deg){ const a = (deg - 90) * Math.PI/180; return [cx + r*Math.cos(a), cy + r*Math.sin(a)]; }
 function arcPath(a0, a1){
   const large = (a1 - a0) > 180 ? 1 : 0;
