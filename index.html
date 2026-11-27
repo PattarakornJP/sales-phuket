@@ -265,7 +265,7 @@ td.map a:hover{text-decoration:underline}
     </div>
   </section>
 
-  <p class="foot">ที่มา: Sales_Assigned_Workload 2026_10082026.xlsx · ยึดชื่อเซลล์จากคอลัมน์ Sale Name<br>เลือกชื่อในตารางแล้วบันทึกบนเบราว์เซอร์นี้ หน้าแผนที่บนเครื่องนี้จะเห็นคนเดียวกันหลังรีเฟรช เครื่องอื่นยังไม่เปลี่ยน</p>
+  <p class="foot">ที่มา: Sales_Assigned_Workload 2026_10082026.xlsx · ยึดชื่อเซลล์จากคอลัมน์ Sale Name<br>เลือกชื่อเซลล์แล้วบันทึกได้เลย ถ้าอัปเดตสคริปต์ของชีตแล้ว ทุกเครื่องจะเห็นชื่อเดียวกันหลังรีเฟรช ถ้ายังไม่อัปเดต จะจำไว้บนเบราว์เซอร์นี้ก่อน</p>
 </div>
 
 <script src="sale-assign.js"></script>
@@ -597,18 +597,28 @@ document.addEventListener('change', e => {
   const person = DATA.stats.find(s => s.nick === sel.value);
   if (!row || !person || !window.SaleAssign) return;
   if (person.sale === row.s && person.nick === row.nick) return;
-  const next = window.SaleAssign.setAssignment(
-    window.SaleAssign.readStore(), row.c, row.hotel, row._baseSale, person.sale, person.nick);
-  try { window.SaleAssign.writeStore(next); }
+  try { window.SaleAssign.remember(row.c, row.hotel, row._baseSale, person.sale, person.nick); }
   catch (e) { toastSale('บันทึกไม่สำเร็จ ลองอีกครั้ง'); return; }
   paintAssign();
-  toastSale('บันทึกบนเครื่องนี้แล้ว · ' + row.c + ' ดูแลโดย ' + person.nick);
+  const who = row.c;
+  const savedNick = person.nick;
+  window.SaleAssign.publish({
+    company: row.c, hotel: row.hotel, baseSale: row._baseSale, sale: person.sale, nick: person.nick
+  }).then(result => {
+    if (result && result.redraw) paintAssign();
+    toastSale(window.SaleAssign.saveMessage(result, who, savedNick));
+  }).catch(() => {
+    toastSale('บันทึกบนเครื่องนี้แล้ว · ' + who + ' ดูแลโดย ' + savedNick + ' แต่ยังส่งขึ้นชีตไม่สำเร็จ');
+  });
 });
 window.addEventListener('storage', e => {
   if (!window.SaleAssign || e.key !== window.SaleAssign.STORE_KEY) return;
   paintAssign();
 });
 paintAssign();
+if (window.SaleAssign && window.SaleAssign.loadRemote) {
+  window.SaleAssign.loadRemote().then(res => { if (res && res.applied) paintAssign(); });
+}
 </script>
 </body>
 </html>

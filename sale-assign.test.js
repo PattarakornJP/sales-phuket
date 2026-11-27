@@ -59,4 +59,43 @@ const other = Sale.setAssignment(store, 'อีกบริษัท', '', 'ค�
 assert.deepStrictEqual(Sale.lookup(other, 'บริษัท ทดสอบ', 'โรงแรม ก', 'คุณกานดา ยามาสัน').nick, 'พี่กร');
 assert.deepStrictEqual(Sale.lookup(other, 'อีกบริษัท', '', 'คุณภัทรกร จุมพล').nick, 'น้องเบบี้');
 
+const sheetRows = [
+  { company: 'บริษัท ทดสอบ', hotel: 'โรงแรม ก', baseSale: 'คุณกานดา ยามาสัน', sale: 'คุณภัทรกร จุมพล', nick: 'พี่กร' },
+  { company: 'เก่า', hotel: '', baseSale: 'คุณภัทรกร จุมพล', sale: 'คุณภัทรกร จุมพล', nick: 'พี่กร' }
+];
+assert.deepStrictEqual(Sale.rowsToStore(sheetRows), {
+  [Sale.assignKey('บริษัท ทดสอบ', 'โรงแรม ก', 'คุณกานดา ยามาสัน')]: { sale: 'คุณภัทรกร จุมพล', nick: 'พี่กร' }
+});
+assert.strictEqual(Sale.isSaleAssignPack({ ok: true, action: 'saleAssign', rows: [] }), true);
+assert.strictEqual(Sale.isSaleAssignPack({ ok: true, count: 128, rows: [{ id: 1 }] }), false);
+
+const box2 = mem();
+Sale.writeStore({
+  [Sale.assignKey('ในเครื่อง', '', 'คุณกานดา ยามาสัน')]: { sale: 'คุณภัทรกร จุมพล', nick: 'พี่กร' }
+}, box2);
+Sale.writeStore(Sale.readStore(box2), box2);
+const dirtyKey = Sale.assignKey('ในเครื่อง', '', 'คุณกานดา ยามาสัน');
+box2.setItem(Sale.DIRTY_KEY, JSON.stringify({ [dirtyKey]: 'set' }));
+const adopted = Sale.adoptRemote(sheetRows, box2);
+assert.strictEqual(adopted[Sale.assignKey('บริษัท ทดสอบ', 'โรงแรม ก', 'คุณกานดา ยามาสัน')].nick, 'พี่กร');
+assert.strictEqual(adopted[dirtyKey].nick, 'พี่กร');
+box2.setItem(Sale.DIRTY_KEY, JSON.stringify({
+  [Sale.assignKey('บริษัท ทดสอบ', 'โรงแรม ก', 'คุณกานดา ยามาสัน')]: 'del'
+}));
+const removed = Sale.adoptRemote(sheetRows, box2);
+assert.strictEqual(removed[Sale.assignKey('บริษัท ทดสอบ', 'โรงแรม ก', 'คุณกานดา ยามาสัน')], undefined);
+
+const payload = Sale.saleAssignPayload('บริษัท ทดสอบ', 'โรงแรม ก', 'คุณกานดา ยามาสัน', 'คุณภัทรกร จุมพล', 'พี่กร', 'test-key');
+assert.strictEqual(payload.action, 'saleAssign');
+assert.strictEqual(Object.prototype.hasOwnProperty.call(payload, 'rows'), false);
+assert.strictEqual(Object.prototype.hasOwnProperty.call(payload, 'table'), false);
+assert.strictEqual(payload.sale, 'คุณภัทรกร จุมพล');
+
+const kept = Sale.remember('บริษัท ทดสอบ', 'โรงแรม ก', 'คุณกานดา ยามาสัน', 'คุณภัทรกร จุมพล', 'พี่กร', box2);
+assert.strictEqual(Sale.lookup(kept, 'บริษัท ทดสอบ', 'โรงแรม ก', 'คุณกานดา ยามาสัน').nick, 'พี่กร');
+assert.strictEqual(Sale.readDirty(box2)[Sale.assignKey('บริษัท ทดสอบ', 'โรงแรม ก', 'คุณกานดา ยามาสัน')], 'set');
+Sale.remember('บริษัท ทดสอบ', 'โรงแรม ก', 'คุณกานดา ยามาสัน', 'คุณกานดา ยามาสัน', 'น้องเบบี้', box2);
+assert.strictEqual(Sale.lookup(Sale.readStore(box2), 'บริษัท ทดสอบ', 'โรงแรม ก', 'คุณกานดา ยามาสัน'), null);
+assert.strictEqual(Sale.readDirty(box2)[Sale.assignKey('บริษัท ทดสอบ', 'โรงแรม ก', 'คุณกานดา ยามาสัน')], 'del');
+
 console.log('sale-assign tests ok');
